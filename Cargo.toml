@@ -1,0 +1,26 @@
+[package]
+name = "relievo"
+version = "0.1.0"
+authors = ["qthree <qthree3@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git"}
+winit = "0.22"
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = "0.2"
+image = { version = "0.23.0-preview.0", default-features = false, features = ["png_codec"] }
+png = "0.16"
+zerocopy = "0.3"
+
+fo_map_format = { git = "https://github.com/fonline-roleplay/rust_workspace" }
+fo_data = { git = "https://github.com/fonline-roleplay/rust_workspace" }
+draw_geometry = { git = "https://github.com/fonline-roleplay/rust_workspace" }
+nom_prelude = { git = "https://github.com/fonline-roleplay/rust_workspace" }
+primitives = { git = "https://github.com/fonline-roleplay/rust_workspace" }
+fo_defines_fo4rp = { git = "https://github.com/fonline-roleplay/rust_workspace" }
+
+fo_proto_format = { git = "https://github.com/fonline-roleplay/fo_proto_format.git" }
