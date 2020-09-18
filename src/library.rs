@@ -269,6 +269,8 @@ impl SpriteMap {
     pub fn open(path: &str, library: &Library) -> Self {
         use draw_geometry::fo as geometry;
         use primitives::Hex;
+        use fo_map_format::Offset;
+
         fo_map_format::verbose_read_file(path, |_, res| {
             let map = res.unwrap().1;
 
@@ -281,12 +283,19 @@ impl SpriteMap {
                 .iter()
                 .filter(|tile| !tile.is_roof)
                 .map(|tile| {
-                    let (x, y) = (tile.hex_x as i32, tile.hex_y as i32);
+                    let (hex_x, hex_y) = (tile.hex_x, tile.hex_y);
+                    let (offset_x, offset_y) = tile.offset();
+                    let (x, y) = (hex_x as i32 , hex_y as i32);
                     let (x, y) = (
-                        /*x = */ y * 16 - x * 24 - 24,
-                        /*y = */ y * 12 + x * 6 + 24,
+                        /*x = */ y * 16 - x * 24 - 24 + offset_x,
+                        /*y = */ y * 12 + x * 6 + 24 + offset_y,
                     );
-                    rect.insert(x, y);
+                    let z = geometry::draw_order_pos_int(
+                        geometry::DRAW_ORDER_FLAT + tile.layer.unwrap_or(0) as u32,
+                        Hex::new(tile.hex_x, tile.hex_y),
+                    )
+                    .unwrap_or(0);
+                    
                     let asset = assets.upsert_path(map
                         .tiles
                         .1
@@ -295,15 +304,11 @@ impl SpriteMap {
                         .expect("Hash must have related conventional path"));
 
                     Sprite {
-                        hex_x: tile.hex_x,
-                        hex_y: tile.hex_y,
+                        hex_x,
+                        hex_y,
                         x,
                         y,
-                        z: geometry::draw_order_pos_int(
-                            geometry::DRAW_ORDER_FLAT + tile.layer.unwrap_or(0) as u32,
-                            Hex::new(tile.hex_x, tile.hex_y),
-                        )
-                        .unwrap_or(0),
+                        z,
                         asset
                     }
                 })
@@ -319,12 +324,16 @@ impl SpriteMap {
                 })
                 .map(|(obj, proto)| {
                     let (hex_x, hex_y) = (obj.map_x.unwrap_or(0), obj.map_y.unwrap_or(0));
+                    let (offset_x, offset_y) = obj.offset();
                     let (x, y) = (hex_x as i32, hex_y as i32);
                     let (x, y) = (
-                        /*x = */ y * 16 - x * 24 - (x % 2) * 8,
-                        /*y = */ y * 12 + x * 6 - (x % 2) * 6,
+                        /*x = */ y * 16 - x * 24 - (x % 2) * 8 + offset_x,
+                        /*y = */ y * 12 + x * 6 - (x % 2) * 6 + offset_y,
                     );
-                    rect.insert(x, y);
+                    let z = geometry::draw_order_pos_int(
+                        geometry::DrawOrderType::DRAW_ORDER_SCENERY as u32,
+                        Hex::new(hex_x, hex_y),
+                    ).unwrap_or(0);
 
                     let asset = assets.upsert_path(
                         &nom_prelude::make_path_conventional(&proto.PicMap)
@@ -335,11 +344,7 @@ impl SpriteMap {
                         hex_y,
                         x,
                         y,
-                        z: geometry::draw_order_pos_int(
-                            geometry::DrawOrderType::DRAW_ORDER_SCENERY as u32,
-                            Hex::new(hex_x, hex_y),
-                        )
-                        .unwrap_or(0),
+                        z,
                         asset,
                     }
                 })
