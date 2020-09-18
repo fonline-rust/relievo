@@ -33,11 +33,7 @@ pub struct SpriteMap {
     assets: Assets<Image, WgpuTexture>,
 }
 
-#[derive(Debug, Clone)]
-struct Image{
-    image: image::RgbaImage,
-    offset: (i16, i16),
-}
+type Image = fo_data::RawImage;
 
 #[derive(Debug)]
 struct Sprite {
@@ -256,12 +252,7 @@ impl Upload<&Wgpu> for Image {
 
 impl Load for Image {
     fn load(path: &str, library: &Library) -> Option<Self> {
-        let png = library.data
-                .get_image(&path).ok()?;
-        let image = image::load_from_memory_with_format(&png.data, image::ImageFormat::Png).unwrap();
-        // TODO: change to into_rgba with image-v29
-        let image = image.to_rgba();
-        Some(Image{image, offset: (png.offset_x, png.offset_y)})
+        library.data.get_rgba(&path).ok()
     }
 }
 
@@ -317,7 +308,8 @@ impl SpriteMap {
                 .objects
                 .0
                 .iter()
-                .filter(|obj| obj.is_scenery())
+                //.filter(|obj| obj.is_scenery())
+                .filter(|obj| obj.kind.anim().is_some())
                 .filter_map(|obj| library.items.get(&obj.proto_id).map(|proto| (obj, proto)))
                 .filter(|(_obj, proto)| {
                     (proto.Flags.unwrap_or(0) & fo_defines_fo4rp::fos::ITEM_HIDDEN) == 0
@@ -380,11 +372,7 @@ impl SpriteMap {
             };
             let width = image.image.width() as i32;
             let height = image.image.height() as i32;
-            let (offset_x, offset_y) = image.offset;
-            /*let x1 = sprite.x + (width/2);
-            let y1 = sprite.y + (height/2);
-            let x0 = x1 - width;
-            let y0 = y1 - height;*/
+            let (offset_x, offset_y) = image.offsets();
             let x0 = sprite.x + offset_x as i32;
             let y0 = sprite.y + offset_y as i32;
             let x1 = x0 + width;
@@ -404,11 +392,7 @@ impl SpriteMap {
             };
             let width = image.image.width() as i32;
             let height = image.image.height() as i32;
-            let (offset_x, offset_y) = image.offset;
-            /*let x1 = sprite.x + (width/2) + offset_x as i32;
-            let y1 = sprite.y + (height/2) + offset_y as i32;
-            let x0 = x1 - width;
-            let y0 = y1 - height;*/
+            let (offset_x, offset_y) = image.offsets();
             let x0 = sprite.x + offset_x as i32;
             let y0 = sprite.y + offset_y as i32;
             let x1 = x0 + width;
