@@ -7,11 +7,11 @@ pub struct Library {
 impl Library {
     pub fn load() -> Self {
         let items = fo_proto_format::build_btree(
-            "../../gamedev/fo/FO4RP/proto/items/items.lst",
+            "../../fo/FO4RP/proto/items/items.lst",
         );
         
         let data =
-            fo_data::FoData::init("../../gamedev/fo/CL4RP", "COLOR.PAL").expect("FoData loading");
+            fo_data::FoData::init("../../fo/CL4RP", "COLOR.PAL").expect("FoData loading");
         
         println!(
             "FoData loaded, archives: {}, files: {}",
@@ -78,7 +78,8 @@ impl<T, U> Assets<T, U> {
 }
 
 trait Load: Sized {
-    fn load(path: &str, library: &Library) -> Option<Self>;
+    type Error: std::fmt::Debug;
+    fn load(path: &str, library: &Library) -> Result<Self, Self::Error>;
 }
 
 trait Upload<G>: Sized {
@@ -92,9 +93,11 @@ impl<T: Load, U> Assets<T, U> where Option<T>: Clone {
         for (path, loaded) in self.to_path.iter().zip(&mut self.loaded) {
             if loaded.is_none() {
                 println!("Loading \"{}\"", path);
-                *loaded = T::load(path, library);
-                if loaded.is_none() {
-                    println!("Can't load {}", path);
+                match T::load(path, library) {
+                    Ok(data) => *loaded = Some(data),
+                    Err(err) => {
+                        println!("Can't load {}, because: {:?}", path, err);
+                    }
                 }
             }
         }
@@ -251,8 +254,9 @@ impl Upload<&Wgpu> for Image {
 }
 
 impl Load for Image {
-    fn load(path: &str, library: &Library) -> Option<Self> {
-        library.data.get_rgba(&path).ok()
+    type Error = fo_data::GetImageError;
+    fn load(path: &str, library: &Library) -> Result<Self, Self::Error> {
+        library.data.get_rgba(&path)
     }
 }
 
@@ -267,7 +271,6 @@ impl SpriteMap {
 
             let mut assets = Assets::new();
 
-            let mut rect = AABB::new();
             let tiles = map
                 .tiles
                 .0
@@ -341,6 +344,7 @@ impl SpriteMap {
                     }
                 })
                 .collect();
+            let rect = AABB::new();
             SpriteMap {
                 rect,
                 tiles,
@@ -732,7 +736,7 @@ impl AABB {
         use std::convert::TryInto;
         self.bottom_right.1.checked_sub(self.top_left.1)?.try_into().ok()
     }
-    fn insert(&mut self, x: i32, y: i32) {        
+    fn _insert(&mut self, x: i32, y: i32) {        
         if x < self.top_left.0 {
             self.top_left.0 = x;
         }

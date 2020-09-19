@@ -32,8 +32,7 @@ async fn run(mut map: SpriteMap) {
 
 fn main() {
     let library = Library::load();
-    //let mut map = library::SpriteMap::open("../../gamedev/fo/FO4RP/maps/ghostfarm.fomap", &library);
-    let mut map = library::SpriteMap::open("../../gamedev/fo/FO4RP/maps/fort_riverdale.fomap", &library);
+    let mut map = library::SpriteMap::open("../../fo/FO4RP/maps/fort_riverdale.fomap", &library);
     map.sort_sprites();
     map.load_data(&library);
     #[cfg(not(target_arch = "wasm32"))]
