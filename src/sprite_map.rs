@@ -85,9 +85,11 @@ impl SpriteMap {
                         /*x = */ y * 16 - x * 24 - (x % 2) * 8 + offset_x,
                         /*y = */ y * 12 + x * 6 - (x % 2) * 6 + offset_y,
                     );
+
+                    // TODO: handle flat items and scenery
                     let z = geometry::draw_order_pos_int(
                         geometry::DrawOrderType::DRAW_ORDER_SCENERY as u32,
-                        Hex::new(hex_x, hex_y),
+                        Hex::new(hex_x, hex_y), //TODO: add + proto.DrawOrderOffsetHexY
                     )
                     .unwrap_or(0);
 
