@@ -11,6 +11,7 @@ pub struct SpriteMap {
     objects: Vec<Sprite>,
     //assets: Assets<Image, WgpuTexture>,
 }
+
 #[derive(Debug)]
 struct Sprite {
     hex_x: u16,
@@ -164,118 +165,8 @@ impl SpriteMap {
         */
         (vertices, materials)
     }
-    pub fn render(&mut self, wgpu: &Wgpu, assets: &Assets) -> SizedBuffer {
-        let (vertices, materials) = self.calc_drawlist(assets);
-        use wgpu::util::DeviceExt;
-        let vertex_buffer = wgpu
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: vertices.as_bytes(),
-                usage: wgpu::BufferUsage::VERTEX,
-            });
-
-        let dimensions = (self.rect.width().unwrap(), self.rect.height().unwrap());
-        //let dimensions = (1920, 1080);
-
-        let size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth: 1,
-        };
-
-        let matrix = {
-            /*Transform2D::identity()
-            .then_translate(vec2(-self.rect.top_left.0 as f32, -self.rect.top_left.1 as f32))
-            .then_scale(1.0 / size.width as f32, 1.0 / size.height as f32)
-            .to_3d()*/
-            euclid::default::Transform3D::ortho(
-                self.rect.top_left.0 as f32,
-                self.rect.bottom_right.0 as f32,
-                self.rect.bottom_right.1 as f32,
-                self.rect.top_left.1 as f32,
-                -1.0,
-                1.0,
-            )
-        };
-
-        let uniforms = SpriteUniforms {
-            projection_matrix: matrix.to_array(),
-        };
-        let uniform_buffer = wgpu
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Uniforms"),
-                contents: uniforms.as_bytes(),
-                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            });
-        let uniform_bind_group = wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &wgpu.uniform_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer {
-                    buffer: &uniform_buffer,
-                    offset: 0,
-                    size: None,
-                },
-            }],
-        });
-
-        let sized_texture = SizedTexture::new(&wgpu.device, size);
-
-        let pipeline = sprite_pipeline(&wgpu, wgpu::TextureFormat::Rgba8UnormSrgb);
-
-        //dbg!(&materials);
-        dbg!(materials.len());
-        dbg!(vertices.len());
-
-        let times = 100;
-        let before_all = std::time::Instant::now();
-        for _ in 0..times {
-            let before = std::time::Instant::now();
-            let mut encoder = wgpu
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-            {
-                let view = sized_texture.view();
-                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::RED),
-                            store: true,
-                        },
-                    }],
-                    depth_stencil_attachment: None,
-                });
-                rpass.set_pipeline(&pipeline);
-                rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                rpass.set_bind_group(0, &uniform_bind_group, &[]);
-
-                //for (key, group) in &materials.into_iter().zip(0u32..).group_by(|(material_id, _)| material_id) {
-                for (material_id, range) in materials.iter() {
-                    let texture = wgpu.material(*material_id);
-                    rpass.set_bind_group(1, &texture.bind_group, &[]);
-                    rpass.draw(0..6, range.clone());
-                }
-            }
-
-            let command_buffer = Some(encoder.finish());
-            wgpu.queue.submit(command_buffer);
-            //wgpu.device.poll(wgpu::Maintain::Wait);
-
-            println!("Render completed in {} us", before.elapsed().as_micros());
-        }
-        let all = before_all.elapsed().as_micros();
-        println!(
-            "All renders completed in {} us; {} us per render",
-            all,
-            all / times
-        );
-
-        sized_texture.save_to_buffer(wgpu)
+    pub fn into_renderer(self, wgpu: &Wgpu, assets: &Assets, format: wgpu::TextureFormat) -> SpriteMapRenderer {
+        SpriteMapRenderer::new(self, wgpu, assets, format)
     }
 }
 
@@ -481,5 +372,174 @@ impl AABB {
         if y1 > self.bottom_right.1 {
             self.bottom_right.1 = y1;
         }
+    }
+}
+
+pub struct SpriteMapRenderer {
+    map: SpriteMap,
+    drawlist: Vec<(MaterialId, std::ops::Range<u32>)>,
+    pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    uniform_buffer: wgpu::Buffer,
+    uniform_bind_group: wgpu::BindGroup,
+}
+
+impl SpriteMapRenderer {
+    fn new(mut map: SpriteMap, wgpu: &Wgpu, assets: &Assets, format: wgpu::TextureFormat) -> Self {
+        let (vertices, materials) = map.calc_drawlist(assets);
+        use wgpu::util::DeviceExt;
+        let vertex_buffer = wgpu
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: vertices.as_bytes(),
+                usage: wgpu::BufferUsage::VERTEX,
+            });
+
+        /*
+        let uniform_buffer = wgpu
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Uniforms"),
+                contents: uniforms.as_bytes(),
+                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            });
+        */
+        let uniform_buffer = wgpu
+            .device
+            .create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Uniforms"),
+                size: std::mem::size_of::<SpriteUniforms>() as wgpu::BufferAddress,
+                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+                mapped_at_creation: false,
+            });
+        
+        let uniform_bind_group = wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &wgpu.uniform_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer {
+                    buffer: &uniform_buffer,
+                    offset: 0,
+                    size: None,
+                },
+            }],
+        });
+
+        let pipeline = sprite_pipeline(&wgpu, format);
+        Self{
+            map, drawlist: materials, pipeline, vertex_buffer, uniform_buffer, uniform_bind_group
+        }
+    }
+    pub fn render_into_texture(&self, wgpu: &Wgpu) -> SizedBuffer {
+        let rect = &self.map.rect;
+        let dimensions = (rect.width().unwrap(), rect.height().unwrap());
+        //let dimensions = (1920, 1080);
+
+        let size = wgpu::Extent3d {
+            width: dimensions.0,
+            height: dimensions.1,
+            depth: 1,
+        };
+
+        let matrix = {
+            /*Transform2D::identity()
+            .then_translate(vec2(-self.rect.top_left.0 as f32, -self.rect.top_left.1 as f32))
+            .then_scale(1.0 / size.width as f32, 1.0 / size.height as f32)
+            .to_3d()*/
+            euclid::default::Transform3D::ortho(
+                rect.top_left.0 as f32,
+                rect.bottom_right.0 as f32,
+                rect.bottom_right.1 as f32,
+                rect.top_left.1 as f32,
+                -1.0,
+                1.0,
+            )
+        };
+
+        let uniforms = SpriteUniforms {
+            projection_matrix: matrix.to_array(),
+        };
+
+        let sized_texture = SizedTexture::new(&wgpu.device, size);
+        self.render(wgpu, &sized_texture.view(), uniforms);
+        sized_texture.save_to_buffer(wgpu)
+    }
+
+    fn xy_ratios(&self, width: u32, height: u32) -> (f32, f32) {
+        let rect = &self.map.rect;
+        let map_width = rect.width().unwrap() as f32;
+        let map_height = rect.height().unwrap() as f32;
+        let window_width = width as f32;
+        let window_height = height as f32;
+
+        let x_ratio = map_width / window_width;
+        let y_ratio = map_height / window_height;
+
+        (x_ratio, y_ratio)
+    }
+    
+    pub fn max_zoom(&self, width: u32, height: u32) -> f32 {
+        let (x_ratio, y_ratio) = self.xy_ratios(width, height);
+        1.0 / x_ratio.max(y_ratio)
+    }
+
+    pub fn render_view(&self, wgpu: &Wgpu, view: &wgpu::TextureView, width: u32, height: u32, zoom: f32) {
+        let (x_ratio, y_ratio) = self.xy_ratios(width, height);
+        let matrix = {
+            let rect = &self.map.rect;
+            euclid::default::Transform3D::ortho(
+                rect.top_left.0 as f32,
+                rect.bottom_right.0 as f32,
+                rect.bottom_right.1 as f32,
+                rect.top_left.1 as f32,
+                -1.0,
+                1.0,
+            ).then_scale(x_ratio*zoom, y_ratio*zoom, 1.0)
+        };
+        let uniforms = SpriteUniforms {
+            projection_matrix: matrix.to_array(),
+        };
+        self.render(wgpu, view, uniforms);
+    }
+    fn render(&self, wgpu: &Wgpu, view: &wgpu::TextureView, uniforms: SpriteUniforms) {
+        dbg!(self.drawlist.len());
+        let before = std::time::Instant::now();
+
+        wgpu.queue.write_buffer(&self.uniform_buffer, 0, uniforms.as_bytes());
+
+        let mut encoder = wgpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        {
+            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                    attachment: view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::RED),
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: None,
+            });
+            rpass.set_pipeline(&self.pipeline);
+            rpass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            rpass.set_bind_group(0, &self.uniform_bind_group, &[]);
+
+            //for (key, group) in &materials.into_iter().zip(0u32..).group_by(|(material_id, _)| material_id) {
+            for (material_id, range) in self.drawlist.iter() {
+                let texture = wgpu.material(*material_id);
+                rpass.set_bind_group(1, &texture.bind_group, &[]);
+                rpass.draw(0..6, range.clone());
+            }
+        }
+
+        let command_buffer = Some(encoder.finish());
+        wgpu.queue.submit(command_buffer);
+        //wgpu.device.poll(wgpu::Maintain::Wait);
+
+        println!("Render completed in {} us", before.elapsed().as_micros());
     }
 }

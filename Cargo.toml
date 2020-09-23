@@ -21,6 +21,7 @@ bumpalo = {version = "3.4", features = ["boxed", "collections"]}
 guillotiere = "0.6"
 euclid = "0.22"
 #itertools = "0.9"
+inline_tweak = { version = "1.0", features = ["release_tweak"] }
 
 #fo_map_format = { git = "https://github.com/fonline-roleplay/rust_workspace" }
 fo_map_format = { path = "../../fo/rust_workspace/crates/fo_map_format" }

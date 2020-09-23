@@ -37,6 +37,8 @@ pub struct MaterialId(usize);
 
 #[derive(Debug)]
 pub struct Wgpu {
+    pub instance: wgpu::Instance,
+    pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub texture_layout: wgpu::BindGroupLayout,
@@ -45,7 +47,8 @@ pub struct Wgpu {
 }
 impl Wgpu {
     pub async fn init() -> Self {
-        let adapter = wgpu::Instance::new(wgpu::BackendBit::PRIMARY)
+        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::Default,
                 compatible_surface: None,
@@ -69,11 +72,18 @@ impl Wgpu {
             .await
             .unwrap();
 
-        Wgpu::from_device_and_queue(device, queue)
+        Self {
+            instance,
+            adapter,
+            texture_layout: Self::create_texture_layout(&device),
+            uniform_layout: Self::create_uniform_layout(&device),
+            device,
+            queue,
+            materials: Default::default(),
+        }
     }
-    fn from_device_and_queue(device: wgpu::Device, queue: wgpu::Queue) -> Self {
-        use std::convert::TryInto;
-        let texture_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+    fn create_texture_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("MaterialLayout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
@@ -93,8 +103,11 @@ impl Wgpu {
                     count: None,
                 },
             ],
-        });
-        let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        })
+    }
+    fn create_uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        use std::convert::TryInto;
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("UniformLayout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -107,14 +120,7 @@ impl Wgpu {
                 },
                 count: None,
             }],
-        });
-        Self {
-            device,
-            queue,
-            texture_layout,
-            uniform_layout,
-            materials: Default::default(),
-        }
+        })
     }
     pub fn material(&self, id: MaterialId) -> &WgpuTexture {
         &self.materials[id.0]
