@@ -23,13 +23,10 @@ euclid = "0.22"
 #itertools = "0.9"
 inline_tweak = { version = "1.0", features = ["release_tweak"] }
 
-#fo_map_format = { git = "https://github.com/fonline-roleplay/rust_workspace" }
-fo_map_format = { path = "../../fo/rust_workspace/crates/fo_map_format" }
-#fo_data = { git = "https://github.com/fonline-roleplay/rust_workspace" }
-fo_data = { path = "../../fo/rust_workspace/crates/fo_data" }
+fo_map_format = { git = "https://github.com/fonline-roleplay/rust_workspace" }
+fo_data = { git = "https://github.com/fonline-roleplay/rust_workspace" }
 draw_geometry = { git = "https://github.com/fonline-roleplay/rust_workspace" }
-#nom_prelude = { git = "https://github.com/fonline-roleplay/rust_workspace" }
-nom_prelude = { path = "../../fo/rust_workspace/crates/nom_prelude" }
+nom_prelude = { git = "https://github.com/fonline-roleplay/rust_workspace" }
 primitives = { git = "https://github.com/fonline-roleplay/rust_workspace" }
 fo_defines_fo4rp = { git = "https://github.com/fonline-roleplay/rust_workspace" }
 

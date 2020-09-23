@@ -165,7 +165,12 @@ impl SpriteMap {
         */
         (vertices, materials)
     }
-    pub fn into_renderer(self, wgpu: &Wgpu, assets: &Assets, format: wgpu::TextureFormat) -> SpriteMapRenderer {
+    pub fn into_renderer(
+        self,
+        wgpu: &Wgpu,
+        assets: &Assets,
+        format: wgpu::TextureFormat,
+    ) -> SpriteMapRenderer {
         SpriteMapRenderer::new(self, wgpu, assets, format)
     }
 }
@@ -405,15 +410,13 @@ impl SpriteMapRenderer {
                 usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
             });
         */
-        let uniform_buffer = wgpu
-            .device
-            .create_buffer(&wgpu::BufferDescriptor {
-                label: Some("Uniforms"),
-                size: std::mem::size_of::<SpriteUniforms>() as wgpu::BufferAddress,
-                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-                mapped_at_creation: false,
-            });
-        
+        let uniform_buffer = wgpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Uniforms"),
+            size: std::mem::size_of::<SpriteUniforms>() as wgpu::BufferAddress,
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let uniform_bind_group = wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: &wgpu.uniform_layout,
@@ -428,8 +431,13 @@ impl SpriteMapRenderer {
         });
 
         let pipeline = sprite_pipeline(&wgpu, format);
-        Self{
-            map, drawlist: materials, pipeline, vertex_buffer, uniform_buffer, uniform_bind_group
+        Self {
+            map,
+            drawlist: materials,
+            pipeline,
+            vertex_buffer,
+            uniform_buffer,
+            uniform_bind_group,
         }
     }
     pub fn render_into_texture(&self, wgpu: &Wgpu) -> SizedBuffer {
@@ -479,13 +487,20 @@ impl SpriteMapRenderer {
 
         (x_ratio, y_ratio)
     }
-    
+
     pub fn max_zoom(&self, width: u32, height: u32) -> f32 {
         let (x_ratio, y_ratio) = self.xy_ratios(width, height);
         1.0 / x_ratio.max(y_ratio)
     }
 
-    pub fn render_view(&self, wgpu: &Wgpu, view: &wgpu::TextureView, width: u32, height: u32, zoom: f32) {
+    pub fn render_view(
+        &self,
+        wgpu: &Wgpu,
+        view: &wgpu::TextureView,
+        width: u32,
+        height: u32,
+        zoom: f32,
+    ) {
         let (x_ratio, y_ratio) = self.xy_ratios(width, height);
         let matrix = {
             let rect = &self.map.rect;
@@ -496,7 +511,8 @@ impl SpriteMapRenderer {
                 rect.top_left.1 as f32,
                 -1.0,
                 1.0,
-            ).then_scale(x_ratio*zoom, y_ratio*zoom, 1.0)
+            )
+            .then_scale(x_ratio * zoom, y_ratio * zoom, 1.0)
         };
         let uniforms = SpriteUniforms {
             projection_matrix: matrix.to_array(),
@@ -507,7 +523,8 @@ impl SpriteMapRenderer {
         dbg!(self.drawlist.len());
         let before = std::time::Instant::now();
 
-        wgpu.queue.write_buffer(&self.uniform_buffer, 0, uniforms.as_bytes());
+        wgpu.queue
+            .write_buffer(&self.uniform_buffer, 0, uniforms.as_bytes());
 
         let mut encoder = wgpu
             .device
