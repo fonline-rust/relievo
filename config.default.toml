@@ -1,0 +1,12 @@
+open_map = "../../fo/FO4RP/maps/fort_riverdale.fomap"
+
+[window]
+width = 800
+height = 600
+background = [1.0, 0.0, 0.0, 1.0]
+
+[paths]
+client = "../../fo/CL4RP"
+items_lst = "../../fo/FO4RP/proto/items/items.lst"
+pallette = "COLOR.PAL"
+shaders = "src"

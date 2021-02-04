@@ -5,10 +5,11 @@ fn main() {
     {
         tracing_subscriber::fmt::init();
         let state = futures::executor::block_on(State::new());
-        state.show_map("../../fo/FO4RP/maps/fort_riverdale.fomap")
+        let map = std::env::args().nth(1).unwrap_or_else(|| state.config.open_map.clone());
+        state.show_map(&map);
     }
     #[cfg(target_arch = "wasm32")]
     {
-        unimplemented!()
+        unimplemented!();
     }
 }

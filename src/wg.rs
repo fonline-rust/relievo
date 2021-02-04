@@ -47,7 +47,7 @@ pub struct Wgpu {
 }
 impl Wgpu {
     pub async fn init() -> Self {
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY); //wgpu::BackendBit::all());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::Default,
@@ -148,6 +148,8 @@ impl Wgpu {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
+            //mag_filter: wgpu::FilterMode::Linear,
+            //min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });

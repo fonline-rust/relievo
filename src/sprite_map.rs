@@ -1,8 +1,9 @@
 use crate::{
     AssetKey, Assets, Image, ImageOffset, ImageSize, Library, MaterialId, SizedBuffer,
-    SizedTexture, SpriteUniforms, TextureView, Wgpu,
+    SizedTexture, SpriteUniforms, TextureView, Wgpu, Config
 };
 use zerocopy::AsBytes;
+use std::path::Path;
 
 #[derive(Debug)]
 pub struct SpriteMap {
@@ -170,8 +171,9 @@ impl SpriteMap {
         wgpu: &Wgpu,
         assets: &Assets,
         format: wgpu::TextureFormat,
+        config: &Config,
     ) -> SpriteMapRenderer {
-        SpriteMapRenderer::new(self, wgpu, assets, format)
+        SpriteMapRenderer::new(self, wgpu, assets, format, config)
     }
 }
 
@@ -209,19 +211,19 @@ fn calc_sprite(
     ))
 }
 
-fn sprite_pipeline(wgpu: &Wgpu, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
+fn sprite_pipeline(wgpu: &Wgpu, format: wgpu::TextureFormat, shaders: &Path) -> wgpu::RenderPipeline {
     // Load the shaders from disk
     let vs_module = wgpu
         .device
         //.create_shader_module(wgpu::include_spirv!("shader.vert.spv"));
         .create_shader_module(wgpu::util::make_spirv(
-            &std::fs::read("src/shader.vert.spv").unwrap(),
+            &std::fs::read(shaders.join("shader.vert.spv")).unwrap(),
         ));
     let fs_module = wgpu
         .device
         //.create_shader_module(wgpu::include_spirv!("shader.frag.spv"));
         .create_shader_module(wgpu::util::make_spirv(
-            &std::fs::read("src/shader.frag.spv").unwrap(),
+            &std::fs::read(shaders.join("shader.frag.spv")).unwrap(),
         ));
 
     let pipeline_layout = wgpu
@@ -387,10 +389,11 @@ pub struct SpriteMapRenderer {
     vertex_buffer: wgpu::Buffer,
     uniform_buffer: wgpu::Buffer,
     uniform_bind_group: wgpu::BindGroup,
+    background: wgpu::Color,
 }
 
 impl SpriteMapRenderer {
-    fn new(mut map: SpriteMap, wgpu: &Wgpu, assets: &Assets, format: wgpu::TextureFormat) -> Self {
+    fn new(mut map: SpriteMap, wgpu: &Wgpu, assets: &Assets, format: wgpu::TextureFormat, config: &Config) -> Self {
         let (vertices, materials) = map.calc_drawlist(assets);
         use wgpu::util::DeviceExt;
         let vertex_buffer = wgpu
@@ -430,7 +433,12 @@ impl SpriteMapRenderer {
             }],
         });
 
-        let pipeline = sprite_pipeline(&wgpu, format);
+        let background = {
+            let [r, g, b, a] = config.window.background;
+            wgpu::Color{r, g, b, a}
+        };
+
+        let pipeline = sprite_pipeline(&wgpu, format, config.paths.shaders.as_ref());
         Self {
             map,
             drawlist: materials,
@@ -438,6 +446,7 @@ impl SpriteMapRenderer {
             vertex_buffer,
             uniform_buffer,
             uniform_bind_group,
+            background
         }
     }
     pub fn render_into_texture(&self, wgpu: &Wgpu) -> SizedBuffer {
@@ -500,6 +509,8 @@ impl SpriteMapRenderer {
         width: u32,
         height: u32,
         zoom: f32,
+        shift_x: f32,
+        shift_y: f32,
     ) {
         let (x_ratio, y_ratio) = self.xy_ratios(width, height);
         let matrix = {
@@ -512,6 +523,7 @@ impl SpriteMapRenderer {
                 -1.0,
                 1.0,
             )
+            .then_translate(euclid::vec3(shift_x, shift_y, 0.0))
             .then_scale(x_ratio * zoom, y_ratio * zoom, 1.0)
         };
         let uniforms = SpriteUniforms {
@@ -520,8 +532,8 @@ impl SpriteMapRenderer {
         self.render(wgpu, view, uniforms);
     }
     fn render(&self, wgpu: &Wgpu, view: &wgpu::TextureView, uniforms: SpriteUniforms) {
-        dbg!(self.drawlist.len());
-        let before = std::time::Instant::now();
+        //dbg!(self.drawlist.len());
+        //let before = std::time::Instant::now();
 
         wgpu.queue
             .write_buffer(&self.uniform_buffer, 0, uniforms.as_bytes());
@@ -535,7 +547,7 @@ impl SpriteMapRenderer {
                     attachment: view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::RED),
+                        load: wgpu::LoadOp::Clear(self.background),
                         store: true,
                     },
                 }],
@@ -557,6 +569,6 @@ impl SpriteMapRenderer {
         wgpu.queue.submit(command_buffer);
         //wgpu.device.poll(wgpu::Maintain::Wait);
 
-        println!("Render completed in {} us", before.elapsed().as_micros());
+        //println!("Render completed in {} us", before.elapsed().as_micros());
     }
 }

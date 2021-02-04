@@ -2,10 +2,12 @@ use relievo::State;
 
 async fn run() {
     let mut state = State::new().await;
+    let map = std::env::args().nth(1).unwrap_or_else(|| state.config.open_map.clone());
+    let output = format!("{}.png", &map);
     state
         .render_map(
-            "../../fo/FO4RP/maps/fort_riverdale.fomap",
-            "fort_riverdale.fomap",
+            &map,
+            &output,
         )
         .await;
 }

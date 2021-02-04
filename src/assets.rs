@@ -140,7 +140,8 @@ impl Assets {
             world, ref bump, ..
         } = self;
 
-        const TEXTURE_MAX_SIZE: euclid::Size2D<u32, Pixel> = euclid::size2(4096, 4096);
+        //const TEXTURE_MAX_SIZE: euclid::Size2D<u32, Pixel> = euclid::size2(4096, 4096);
+        const TEXTURE_MAX_SIZE: euclid::Size2D<u32, Pixel> = euclid::size2(8192, 8192);
         use std::cmp::Reverse;
         let mut total_size: euclid::Size2D<u32, Pixel> = euclid::size2(0, 0);
         let sorted: BTreeSet<_> = world

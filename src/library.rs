@@ -1,24 +1,40 @@
-use crate::{IntoComponents, Load, Pixel};
+use crate::{IntoComponents, Load, Pixel, config};
 use fo_data::{Converter, FoData, Retriever};
 use std::collections::BTreeMap;
 
+#[cfg(not(feature = "sled-retriever"))]
+type MyRetriever = fo_data::FoRetriever;
+#[cfg(feature = "sled-retriever")]
+type MyRetriever = fo_data::SledRetriever;
+
 pub struct Library {
     items: BTreeMap<u16, fo_proto_format::ProtoItem>,
-    retriever: Retriever,
+    retriever: MyRetriever,
 }
 
 impl Library {
-    pub fn load() -> Self {
-        let items = fo_proto_format::build_btree("../../fo/FO4RP/proto/items/items.lst");
+    pub fn load(paths: &config::Paths) -> Self {
+        let items = fo_proto_format::build_btree(&paths.items_lst);
 
-        let retriever = FoData::init("../../fo/CL4RP", "COLOR.PAL")
+        let retriever;
+        #[cfg(not(feature = "sled-retriever"))]
+        {
+            retriever = FoData::init(&paths.client, &paths.pallette)
             .expect("FoData loading")
             .into_retriever();
+        }
+        #[cfg(feature = "sled-retriever")]
+        {
+            retriever = MyRetriever::init("D:\\fo\\test_assets\\db\\assets", &paths.pallette).unwrap();
+        }
 
-        println!(
+        /*println!(
             "FoData loaded, archives: {}, files: {}",
             retriever.data().count_archives(),
             retriever.data().count_files()
+        );*/
+        println!(
+            "FoData loaded"
         );
 
         Self { items, retriever }
