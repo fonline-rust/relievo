@@ -211,20 +211,17 @@ fn calc_sprite(
     ))
 }
 
+fn shader_module_from_file(device: &wgpu::Device, path: &Path) -> wgpu::ShaderModule {
+    let file = std::fs::read(path).unwrap();
+    let source = wgpu::util::make_spirv(
+        &file);
+    device.create_shader_module(&wgpu::ShaderModuleDescriptor{source, label: None, flags: Default::default()})
+}
+
 fn sprite_pipeline(wgpu: &Wgpu, format: wgpu::TextureFormat, shaders: &Path) -> wgpu::RenderPipeline {
     // Load the shaders from disk
-    let vs_module = wgpu
-        .device
-        //.create_shader_module(wgpu::include_spirv!("shader.vert.spv"));
-        .create_shader_module(wgpu::util::make_spirv(
-            &std::fs::read(shaders.join("shader.vert.spv")).unwrap(),
-        ));
-    let fs_module = wgpu
-        .device
-        //.create_shader_module(wgpu::include_spirv!("shader.frag.spv"));
-        .create_shader_module(wgpu::util::make_spirv(
-            &std::fs::read(shaders.join("shader.frag.spv")).unwrap(),
-        ));
+    let vs_module = shader_module_from_file(&wgpu.device, &shaders.join("shader.vert.spv"));
+    let fs_module = shader_module_from_file(&wgpu.device, &shaders.join("shader.frag.spv"));
 
     let pipeline_layout = wgpu
         .device
@@ -245,14 +242,14 @@ fn sprite_pipeline(wgpu: &Wgpu, format: wgpu::TextureFormat, shaders: &Path) -> 
         write_mask: wgpu::ColorWrite::ALL,
     }];*/
 
-    let color_states = &[wgpu::ColorStateDescriptor {
+    let color_states = &[wgpu::ColorTargetState {
         format: format,
-        color_blend: wgpu::BlendDescriptor {
+        color_blend: wgpu::BlendState {
             src_factor: wgpu::BlendFactor::SrcAlpha,
             dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
             operation: wgpu::BlendOperation::Add,
         },
-        alpha_blend: wgpu::BlendDescriptor {
+        alpha_blend: wgpu::BlendState {
             src_factor: wgpu::BlendFactor::One,
             dst_factor: wgpu::BlendFactor::One,
             operation: wgpu::BlendOperation::Max,
@@ -265,26 +262,26 @@ fn sprite_pipeline(wgpu: &Wgpu, format: wgpu::TextureFormat, shaders: &Path) -> 
         .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
-            vertex_stage: wgpu::ProgrammableStageDescriptor {
+            vertex: wgpu::VertexState {
                 module: &vs_module,
                 entry_point: "main",
+                buffers: &[SpriteVertex::desc()],
             },
-            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+            fragment: Some(wgpu::FragmentState {
                 module: &fs_module,
                 entry_point: "main",
+                targets: color_states,
             }),
             // Use the default rasterizer state: no culling, no depth bias
-            rasterization_state: None,
-            primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-            color_states,
-            depth_stencil_state: None,
-            vertex_state: wgpu::VertexStateDescriptor {
-                index_format: wgpu::IndexFormat::Uint16,
-                vertex_buffers: &[SpriteVertex::desc()],
+            primitive: wgpu::PrimitiveState {
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: wgpu::CullMode::None,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..Default::default()
             },
-            sample_count: 1,
-            sample_mask: !0,
-            alpha_to_coverage_enabled: false,
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
         });
 
     render_pipeline
@@ -299,22 +296,22 @@ struct SpriteVertex {
 }
 
 impl SpriteVertex {
-    fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a> {
-        wgpu::VertexBufferDescriptor {
-            stride: std::mem::size_of::<SpriteVertex>() as wgpu::BufferAddress,
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<SpriteVertex>() as wgpu::BufferAddress,
             step_mode: wgpu::InputStepMode::Instance,
             attributes: &[
-                wgpu::VertexAttributeDescriptor {
+                wgpu::VertexAttribute {
                     offset: 0,
                     shader_location: 0,
                     format: wgpu::VertexFormat::Float2,
                 },
-                wgpu::VertexAttributeDescriptor {
+                wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float2,
                 },
-                wgpu::VertexAttributeDescriptor {
+                wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
                     shader_location: 2,
                     format: wgpu::VertexFormat::Ushort4,
@@ -543,6 +540,7 @@ impl SpriteMapRenderer {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: view,
                     resolve_target: None,

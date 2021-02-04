@@ -28,7 +28,8 @@ impl Config {
 pub struct Window {
     pub width: u32,
     pub height: u32,
-    pub background: [f64; 4]
+    pub background: [f64; 4],
+    pub low_power: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

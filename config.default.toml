@@ -4,6 +4,7 @@ open_map = "../../fo/FO4RP/maps/fort_riverdale.fomap"
 width = 800
 height = 600
 background = [1.0, 0.0, 0.0, 1.0]
+low_power = false
 
 [paths]
 client = "../../fo/CL4RP"

@@ -46,11 +46,11 @@ pub struct Wgpu {
     materials: slab::Slab<WgpuTexture>,
 }
 impl Wgpu {
-    pub async fn init() -> Self {
+    pub async fn init(low_power: bool) -> Self {
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY); //wgpu::BackendBit::all());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::Default,
+                power_preference: if low_power { wgpu::PowerPreference::LowPower } else {wgpu::PowerPreference::HighPerformance},
                 compatible_surface: None,
             })
             .await
@@ -89,17 +89,17 @@ impl Wgpu {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
+                    ty: wgpu::BindingType::Texture {
                         multisampled: false,
-                        component_type: wgpu::TextureComponentType::Float,
-                        dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float{filterable: true},
+                        view_dimension: wgpu::TextureViewDimension::D2,
                     },
                     count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler { comparison: false },
+                    ty: wgpu::BindingType::Sampler { comparison: false, filtering: true },
                     count: None,
                 },
             ],
@@ -112,8 +112,9 @@ impl Wgpu {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStage::VERTEX,
-                ty: wgpu::BindingType::UniformBuffer {
-                    dynamic: false,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
                     min_binding_size: (std::mem::size_of::<SpriteUniforms>() as u64)
                         .try_into()
                         .ok(),
@@ -236,7 +237,7 @@ impl SizedTexture {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT | wgpu::TextureUsage::COPY_SRC,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT | wgpu::TextureUsage::COPY_SRC,
         });
         Self { texture, size }
     }

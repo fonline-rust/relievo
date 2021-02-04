@@ -29,7 +29,7 @@ impl State {
         let assets = Assets::new();
 
         println!("Initializing GPU...");
-        let wgpu = Wgpu::init().await;
+        let wgpu = Wgpu::init(config.window.low_power).await;
 
         println!("Ready to work!");
 
@@ -95,7 +95,7 @@ impl State {
         let mut swapchain = self.wgpu.device.create_swap_chain(
             &surface,
             &wgpu::SwapChainDescriptor {
-                usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+                usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
                 format,
                 width,
                 height,
@@ -159,7 +159,7 @@ impl State {
                             swapchain = self.wgpu.device.create_swap_chain(
                                 &surface,
                                 &wgpu::SwapChainDescriptor {
-                                    usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+                                    usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
                                     format,
                                     width,
                                     height,
