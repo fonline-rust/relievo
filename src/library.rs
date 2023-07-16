@@ -1,9 +1,9 @@
-use crate::{IntoComponents, Load, Pixel, config};
+use crate::{config, IntoComponents, Load, Pixel};
 use fo_data::{Converter, FoData, Retriever};
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "sled-retriever"))]
-type MyRetriever = fo_data::FoRetriever;
+type MyRetriever = fo_data::FoData;
 #[cfg(feature = "sled-retriever")]
 type MyRetriever = fo_data::SledRetriever;
 
@@ -20,12 +20,12 @@ impl Library {
         #[cfg(not(feature = "sled-retriever"))]
         {
             retriever = FoData::init(&paths.client, &paths.pallette)
-            .expect("FoData loading")
-            .into_retriever();
+                .expect("FoData loading");
         }
         #[cfg(feature = "sled-retriever")]
         {
-            retriever = MyRetriever::init("D:\\fo\\test_assets\\db\\assets", &paths.pallette).unwrap();
+            retriever =
+                MyRetriever::init("D:\\fo\\test_assets\\db\\assets", &paths.pallette).unwrap();
         }
 
         /*println!(
@@ -33,9 +33,7 @@ impl Library {
             retriever.data().count_archives(),
             retriever.data().count_files()
         );*/
-        println!(
-            "FoData loaded"
-        );
+        println!("FoData loaded");
 
         Self { items, retriever }
     }
@@ -52,6 +50,7 @@ impl Load for Image {
     fn load(path: &str, library: &Library) -> Result<Self, String> {
         library
             .retriever
+            .converter()
             .get_rgba(&path)
             .map_err(|err| format!("{:?}", err))
     }

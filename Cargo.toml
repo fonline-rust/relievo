@@ -16,25 +16,26 @@ winit = "0.24"
 futures = "0.3"
 tracing = "0.1"
 tracing-subscriber = "0.2"
-image = { version = "0.23", default-features = false, features = ["png"] }
+image = { version = "0.24", default-features = false, features = ["png"] }
 png = "0.16"
 zerocopy = "0.3"
 hecs = "0.3"
 slab = "0.4"
-bumpalo = {version = "3.4", features = ["boxed", "collections"]}
+bumpalo = {version = "3", features = ["boxed", "collections"]}
 guillotiere = "0.6"
 euclid = "0.22"
 #itertools = "0.9"
-inline_tweak = { version = "1.0"} #, features = ["release_tweak"] }
+inline_tweak = { version = "1"} #, features = ["release_tweak"] }
 
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
 toml = "0.5"
 
-fo_map_format = { git = "https://github.com/fonline-roleplay/rust_workspace" }
-fo_data = { git = "https://github.com/fonline-roleplay/rust_workspace" }
-draw_geometry = { git = "https://github.com/fonline-roleplay/rust_workspace" }
-nom_prelude = { git = "https://github.com/fonline-roleplay/rust_workspace" }
-primitives = { git = "https://github.com/fonline-roleplay/rust_workspace" }
-fo_defines_fo4rp = { git = "https://github.com/fonline-roleplay/rust_workspace" }
+fo_map_format = { git = "https://github.com/fonline-rust/fo_map_format" }
+fo_data = { git = "https://github.com/fonline-rust/fo_data" }
+draw_geometry = { git = "https://github.com/fonline-rust/legacy" }
+nom_prelude = { git = "https://github.com/fonline-rust/format_extras" }
+primitives = { git = "https://github.com/fonline-rust/legacy" }
+fo_defines_fo4rp = { git = "https://github.com/fonline-rust/legacy" }
 
-fo_proto_format = { git = "https://github.com/fonline-roleplay/fo_proto_format.git" }
+fo_proto_format = { git = "https://github.com/fonline-rust/fo_proto_format.git" }
+

@@ -1,14 +1,14 @@
 mod assets;
+mod config;
 mod library;
 mod sprite_map;
 mod wg;
-mod config;
 
 use assets::{AssetKey, Assets, IntoComponents, Load, SelfInserter};
+use config::Config;
 use library::{Image, ImageOffset, ImageSize, Library};
 use sprite_map::{SpriteMap, SpriteMapRenderer};
 use wg::{MaterialId, SizedBuffer, SizedTexture, SpriteUniforms, TextureView, Wgpu, WgpuUpload};
-use config::Config;
 
 use hecs::Component;
 pub struct Pixel;
@@ -74,7 +74,7 @@ impl State {
         let format = wgpu::TextureFormat::Bgra8UnormSrgb;
         let renderer = self.prepare_map(map, format);
         let mut width = self.config.window.width;
-        let mut height =  self.config.window.height;
+        let mut height = self.config.window.height;
 
         println!("Creating window...");
 
@@ -84,7 +84,6 @@ impl State {
             .with_title("MapViewer")
             .build(&event_loop)
             .unwrap();
-
 
         println!("Creating surface...");
 
@@ -119,14 +118,16 @@ impl State {
         }
         impl Keys {
             fn shift_x(&self) -> f32 {
-                (if self.left {1.0} else {0.0}) +
-                (if self.right {-1.0} else {0.0})
+                (if self.left { 1.0 } else { 0.0 }) + (if self.right { -1.0 } else { 0.0 })
             }
             fn shift_y(&self) -> f32 {
-                (if self.up {-1.0} else {0.0}) +
-                (if self.down {1.0} else {0.0})
+                (if self.up { -1.0 } else { 0.0 }) + (if self.down { 1.0 } else { 0.0 })
             }
-            fn input(&mut self, key:  winit::event::VirtualKeyCode, state: winit::event::ElementState) {
+            fn input(
+                &mut self,
+                key: winit::event::VirtualKeyCode,
+                state: winit::event::ElementState,
+            ) {
                 let pressed = state == winit::event::ElementState::Pressed;
                 use winit::event::VirtualKeyCode::*;
                 *match key {
@@ -144,7 +145,10 @@ impl State {
 
         event_loop.run(move |event, _event_loop, control_flow| {
             use winit::{
-                event::{Event, MouseScrollDelta, StartCause, WindowEvent, KeyboardInput, VirtualKeyCode, ElementState},
+                event::{
+                    ElementState, Event, KeyboardInput, MouseScrollDelta, StartCause,
+                    VirtualKeyCode, WindowEvent,
+                },
                 event_loop::ControlFlow,
             };
             match event {
@@ -185,11 +189,16 @@ impl State {
                             zoom = (zoom * scroll).max(max_zoom).min(min_zoom);
                         }
                         WindowEvent::KeyboardInput {
-                            input: KeyboardInput{state, virtual_keycode: Some(key), ..},
+                            input:
+                                KeyboardInput {
+                                    state,
+                                    virtual_keycode: Some(key),
+                                    ..
+                                },
                             ..
                         } => {
                             keys.input(key, state);
-                        },
+                        }
                         WindowEvent::CloseRequested => {
                             *control_flow = ControlFlow::Exit;
                         }

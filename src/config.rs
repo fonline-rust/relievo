@@ -1,10 +1,10 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Config {
     pub open_map: String,
     pub window: Window,
-    pub paths: Paths
+    pub paths: Paths,
 }
 
 impl Config {

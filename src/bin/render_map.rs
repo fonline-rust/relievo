@@ -2,14 +2,11 @@ use relievo::State;
 
 async fn run() {
     let mut state = State::new().await;
-    let map = std::env::args().nth(1).unwrap_or_else(|| state.config.open_map.clone());
+    let map = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| state.config.open_map.clone());
     let output = format!("{}.png", &map);
-    state
-        .render_map(
-            &map,
-            &output,
-        )
-        .await;
+    state.render_map(&map, &output).await;
 }
 
 fn main() {

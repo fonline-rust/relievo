@@ -50,7 +50,11 @@ impl Wgpu {
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY); //wgpu::BackendBit::all());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: if low_power { wgpu::PowerPreference::LowPower } else {wgpu::PowerPreference::HighPerformance},
+                power_preference: if low_power {
+                    wgpu::PowerPreference::LowPower
+                } else {
+                    wgpu::PowerPreference::HighPerformance
+                },
                 compatible_surface: None,
             })
             .await
@@ -91,7 +95,7 @@ impl Wgpu {
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         multisampled: false,
-                        sample_type: wgpu::TextureSampleType::Float{filterable: true},
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::D2,
                     },
                     count: None,
@@ -99,7 +103,10 @@ impl Wgpu {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler { comparison: false, filtering: true },
+                    ty: wgpu::BindingType::Sampler {
+                        comparison: false,
+                        filtering: true,
+                    },
                     count: None,
                 },
             ],

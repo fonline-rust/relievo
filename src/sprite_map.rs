@@ -1,9 +1,9 @@
 use crate::{
-    AssetKey, Assets, Image, ImageOffset, ImageSize, Library, MaterialId, SizedBuffer,
-    SizedTexture, SpriteUniforms, TextureView, Wgpu, Config
+    AssetKey, Assets, Config, Image, ImageOffset, ImageSize, Library, MaterialId, SizedBuffer,
+    SizedTexture, SpriteUniforms, TextureView, Wgpu,
 };
-use zerocopy::AsBytes;
 use std::path::Path;
+use zerocopy::AsBytes;
 
 #[derive(Debug)]
 pub struct SpriteMap {
@@ -29,92 +29,97 @@ impl SpriteMap {
         use fo_map_format::Offset;
         use primitives::Hex;
 
-        fo_map_format::verbose_read_file(path, |_, res| {
-            let map = res.unwrap().1;
+        fo_map_format::verbose_read_file(
+            path,
+            |_, res| {
+                let map = res.unwrap().1;
 
-            let tiles = map
-                .tiles
-                .0
-                .iter()
-                .filter(|tile| !tile.is_roof)
-                .map(|tile| {
-                    let (hex_x, hex_y) = (tile.hex_x, tile.hex_y);
-                    let (offset_x, offset_y) = tile.offset();
-                    let (x, y) = (hex_x as i32, hex_y as i32);
-                    let (x, y) = (
-                        /*x = */ y * 16 - x * 24 - 24 + offset_x,
-                        /*y = */ y * 12 + x * 6 + 24 + offset_y,
-                    );
-                    let z = geometry::draw_order_pos_int(
-                        geometry::DRAW_ORDER_FLAT + tile.layer.unwrap_or(0) as u32,
-                        Hex::new(tile.hex_x, tile.hex_y),
-                    )
-                    .unwrap_or(0);
+                let tiles = map
+                    .tiles
+                    .0
+                    .iter()
+                    .filter(|tile| !tile.is_roof)
+                    .map(|tile| {
+                        let (hex_x, hex_y) = (tile.hex_x, tile.hex_y);
+                        let (offset_x, offset_y) = tile.offset();
+                        let (x, y) = (hex_x as i32, hex_y as i32);
+                        let (x, y) = (
+                            /*x = */ y * 16 - x * 24 - 24 + offset_x,
+                            /*y = */ y * 12 + x * 6 + 24 + offset_y,
+                        );
+                        let z = geometry::draw_order_pos_int(
+                            geometry::DRAW_ORDER_FLAT + tile.layer.unwrap_or(0) as u32,
+                            Hex::new(tile.hex_x, tile.hex_y),
+                        )
+                        .unwrap_or(0);
 
-                    let asset = assets.upsert_path::<Image>(
-                        map.tiles
-                            .1
-                            .to_path
-                            .get(&tile.hash)
-                            .expect("Hash must have related conventional path"),
-                    );
+                        let asset = assets.upsert_path::<Image>(
+                            map.tiles
+                                .1
+                                .to_path
+                                .get(&tile.hash)
+                                .expect("Hash must have related conventional path"),
+                        );
 
-                    Sprite {
-                        hex_x,
-                        hex_y,
-                        x,
-                        y,
-                        z,
-                        asset,
-                    }
-                })
-                .collect();
-            let objects = map
-                .objects
-                .0
-                .iter()
-                //.filter(|obj| obj.is_scenery())
-                .filter(|obj| obj.kind.anim().is_some())
-                .filter_map(|obj| library.with_proto(obj))
-                .filter(|(_obj, proto)| {
-                    (proto.Flags.unwrap_or(0) & fo_defines_fo4rp::fos::ITEM_HIDDEN) == 0
-                })
-                .map(|(obj, proto)| {
-                    let (hex_x, hex_y) = (obj.map_x.unwrap_or(0), obj.map_y.unwrap_or(0));
-                    let (offset_x, offset_y) = obj.offset();
-                    let (x, y) = (hex_x as i32, hex_y as i32);
-                    let (x, y) = (
-                        /*x = */ y * 16 - x * 24 - (x % 2) * 8 + offset_x,
-                        /*y = */ y * 12 + x * 6 - (x % 2) * 6 + offset_y,
-                    );
+                        Sprite {
+                            hex_x,
+                            hex_y,
+                            x,
+                            y,
+                            z,
+                            asset,
+                        }
+                    })
+                    .collect();
+                let objects = map
+                    .objects
+                    .0
+                    .iter()
+                    //.filter(|obj| obj.is_scenery())
+                    .filter(|obj| obj.kind.anim().is_some())
+                    .filter_map(|obj| library.with_proto(obj))
+                    .filter(|(_obj, proto)| {
+                        (proto.Flags.unwrap_or(0) & fo_defines_fo4rp::fos::ITEM_HIDDEN) == 0
+                    })
+                    .map(|(obj, proto)| {
+                        let (hex_x, hex_y) = (obj.map_x.unwrap_or(0), obj.map_y.unwrap_or(0));
+                        let (offset_x, offset_y) = obj.offset();
+                        let (x, y) = (hex_x as i32, hex_y as i32);
+                        let (x, y) = (
+                            /*x = */ y * 16 - x * 24 - (x % 2) * 8 + offset_x,
+                            /*y = */ y * 12 + x * 6 - (x % 2) * 6 + offset_y,
+                        );
 
-                    // TODO: handle flat items and scenery
-                    let z = geometry::draw_order_pos_int(
-                        geometry::DrawOrderType::DRAW_ORDER_SCENERY as u32,
-                        Hex::new(hex_x, hex_y), //TODO: add + proto.DrawOrderOffsetHexY
-                    )
-                    .unwrap_or(0);
+                        // TODO: handle flat items and scenery
+                        let z = geometry::draw_order_pos_int(
+                            geometry::DrawOrderType::DRAW_ORDER_SCENERY as u32,
+                            Hex::new(hex_x, hex_y), //TODO: add + proto.DrawOrderOffsetHexY
+                        )
+                        .unwrap_or(0);
 
-                    let asset = assets
-                        .upsert_path::<Image>(&nom_prelude::make_path_conventional(&proto.PicMap));
+                        let asset = assets.upsert_path::<Image>(
+                            &nom_prelude::make_path_conventional(&proto.PicMap),
+                        );
 
-                    Sprite {
-                        hex_x,
-                        hex_y,
-                        x,
-                        y,
-                        z,
-                        asset,
-                    }
-                })
-                .collect();
-            let rect = AABB::new();
-            SpriteMap {
-                rect,
-                tiles,
-                objects,
-            }
-        })
+                        Sprite {
+                            hex_x,
+                            hex_y,
+                            x,
+                            y,
+                            z,
+                            asset,
+                        }
+                    })
+                    .collect();
+                let rect = AABB::new();
+                SpriteMap {
+                    rect,
+                    tiles,
+                    objects,
+                }
+            },
+            Default::default(),
+        )
         .unwrap()
     }
     pub fn sort_sprites(&mut self) {
@@ -213,12 +218,19 @@ fn calc_sprite(
 
 fn shader_module_from_file(device: &wgpu::Device, path: &Path) -> wgpu::ShaderModule {
     let file = std::fs::read(path).unwrap();
-    let source = wgpu::util::make_spirv(
-        &file);
-    device.create_shader_module(&wgpu::ShaderModuleDescriptor{source, label: None, flags: Default::default()})
+    let source = wgpu::util::make_spirv(&file);
+    device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+        source,
+        label: None,
+        flags: Default::default(),
+    })
 }
 
-fn sprite_pipeline(wgpu: &Wgpu, format: wgpu::TextureFormat, shaders: &Path) -> wgpu::RenderPipeline {
+fn sprite_pipeline(
+    wgpu: &Wgpu,
+    format: wgpu::TextureFormat,
+    shaders: &Path,
+) -> wgpu::RenderPipeline {
     // Load the shaders from disk
     let vs_module = shader_module_from_file(&wgpu.device, &shaders.join("shader.vert.spv"));
     let fs_module = shader_module_from_file(&wgpu.device, &shaders.join("shader.frag.spv"));
@@ -390,7 +402,13 @@ pub struct SpriteMapRenderer {
 }
 
 impl SpriteMapRenderer {
-    fn new(mut map: SpriteMap, wgpu: &Wgpu, assets: &Assets, format: wgpu::TextureFormat, config: &Config) -> Self {
+    fn new(
+        mut map: SpriteMap,
+        wgpu: &Wgpu,
+        assets: &Assets,
+        format: wgpu::TextureFormat,
+        config: &Config,
+    ) -> Self {
         let (vertices, materials) = map.calc_drawlist(assets);
         use wgpu::util::DeviceExt;
         let vertex_buffer = wgpu
@@ -432,7 +450,7 @@ impl SpriteMapRenderer {
 
         let background = {
             let [r, g, b, a] = config.window.background;
-            wgpu::Color{r, g, b, a}
+            wgpu::Color { r, g, b, a }
         };
 
         let pipeline = sprite_pipeline(&wgpu, format, config.paths.shaders.as_ref());
@@ -443,7 +461,7 @@ impl SpriteMapRenderer {
             vertex_buffer,
             uniform_buffer,
             uniform_bind_group,
-            background
+            background,
         }
     }
     pub fn render_into_texture(&self, wgpu: &Wgpu) -> SizedBuffer {
